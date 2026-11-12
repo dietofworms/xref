@@ -2,12 +2,18 @@
 name = "uey"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pydantic>=2.14.3",
+    "typer>=0.29.1",
+]
 
 [dependency-groups]
 dev = [
     "dbt-oss==2.0.11",
     "duckdb>=2.0.0",
+    "pyright>=1.1.414",
+    "pytest>=9.2.0",
+    "ruff>=0.17.4",
 ]
 
 [build-system]
@@ -16,3 +22,6 @@ build-backend = "uv_build"
 
 [project.scripts]
 uey = "uey.cli:app"
+
+[tool.pyright]
+typeCheckingMode = "strict"
