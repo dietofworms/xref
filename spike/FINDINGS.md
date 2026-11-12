@@ -1,7 +1,9 @@
 # Phase 0 findings
 
-dbt-oss 2.0.11 (Apache 2.0) with DuckDB, run on 2026-11-12. Experiment 6 was
-repeated on the proprietary `dbt` 2.0.11 with no license installed.
+dbt-oss 2.0.11 (Apache 2.0) with DuckDB, run on 2026-11-12. Experiments 1 to 6
+and 8 were repeated on the proprietary `dbt` 2.0.11 with no license installed,
+with the same results except where experiment 6 notes a difference. Both
+distributions write a `dim_customers` node with the same set of fields.
 
 **Decision: go.** The stub-package design works on dbt v2 with no hook into the
 engine. Two parts of the handoff were wrong; see "Changes to the plan".
