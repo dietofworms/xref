@@ -1,0 +1,9 @@
+name: consumer
+version: "1.0.0"
+profile: consumer
+
+model-paths: ["models"]
+
+models:
+  consumer:
+    +materialized: table

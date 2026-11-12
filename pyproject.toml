@@ -1,0 +1,11 @@
+[project]
+name = "uey"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "dbt-oss==2.0.11",
+    "duckdb>=2.0.0",
+]

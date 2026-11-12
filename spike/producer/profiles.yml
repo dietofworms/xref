@@ -1,0 +1,11 @@
+# Both projects share one DuckDB file so the consumer can query the
+# producer's tables. In a real mesh these would be separate databases.
+# The path is relative to the directory you run dbt from: use the Makefile.
+producer:
+  target: prod
+  outputs:
+    prod:
+      type: duckdb
+      path: ../warehouse.duckdb
+      schema: core
+      threads: 1
