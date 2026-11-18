@@ -1,6 +1,6 @@
 # xref
 
-Cross-project refs for dbt v2. See README.md for usage and spike/FINDINGS.md
+Cross-project refs for dbt v2. See README.md for usage and docs/dbt-behaviour.md
 for the dbt behaviour the design relies on.
 
 ## Commits
@@ -9,6 +9,12 @@ for the dbt behaviour the design relies on.
   <28944297+dietofworms@users.noreply.github.com>`.
 - Do not add `Co-Authored-By` or `Claude-Session` trailers to commit messages,
   and no attribution footer in pull request descriptions.
+
+## Pull requests
+
+- Open pull requests ready for review, not as drafts.
+- Merge a pull request once its CI checks pass. If CI passes on a broken
+  change, fix the checks.
 
 ## Checks
 

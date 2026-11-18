@@ -23,7 +23,7 @@ from xref.cli import app
 
 pytestmark = pytest.mark.dbt
 
-SPIKE = Path(__file__).parent.parent / "spike"
+PROJECTS = Path(__file__).parent / "fixtures" / "projects"
 DBT_FLAGS = ["--no-version-check", "--no-send-anonymous-usage-stats", "--profiles-dir", "."]
 
 VERSIONED_YML = """
@@ -67,7 +67,7 @@ def _dbt(project: Path, *args: str) -> subprocess.CompletedProcess[str]:
 def _copy_project(name: str, dest: Path) -> Path:
     project = dest / name
     shutil.copytree(
-        SPIKE / name,
+        PROJECTS / name,
         project,
         ignore=shutil.ignore_patterns(
             ".xref",

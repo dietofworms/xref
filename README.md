@@ -156,8 +156,8 @@ XREF_DBT="uvx --from dbt==2.0.11 dbt" uv run pytest -m dbt   # proprietary dbt
 uv run ruff check . && uv run pyright
 ```
 
-`spike/` holds the Phase 0 experiments that proved the design; see
-[spike/FINDINGS.md](spike/FINDINGS.md).
+[docs/dbt-behaviour.md](docs/dbt-behaviour.md) records the dbt behaviour the design
+relies on.
 
 To release, set `version` in `pyproject.toml`, merge to `master`, then push a
 matching tag (`v0.1.0` for version `0.1.0`). The Publish workflow uploads to
