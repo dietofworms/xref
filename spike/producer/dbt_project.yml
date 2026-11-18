@@ -1,0 +1,14 @@
+name: producer
+version: "1.0.0"
+profile: producer
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+
+seeds:
+  producer:
+    +schema: raw
+
+models:
+  producer:
+    +materialized: table

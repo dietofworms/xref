@@ -1,0 +1,52 @@
+models:
+  - name: stg_customers
+    description: Customers from the raw seed, typed and cleaned.
+
+  - name: stg_orders
+    description: Orders from the raw seed, typed.
+
+  - name: dim_customers
+    description: One row per customer with order totals.
+    config:
+      access: public
+      contract:
+        enforced: true
+    columns:
+      - name: customer_id
+        description: Primary key.
+        data_type: integer
+        constraints:
+          - type: not_null
+        data_tests:
+          - unique
+          - not_null
+      - name: first_name
+        data_type: varchar
+      - name: last_name
+        data_type: varchar
+      - name: email
+        data_type: varchar
+      - name: signup_date
+        data_type: date
+      - name: order_count
+        description: All orders, any status.
+        data_type: bigint
+      - name: lifetime_value
+        description: Sum of completed order amounts.
+        data_type: decimal(12, 2)
+
+  - name: fct_orders
+    description: One row per order.
+    config:
+      access: public
+    columns:
+      - name: order_id
+        description: Primary key.
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_id
+      - name: order_date
+      - name: status
+      - name: amount
+      - name: is_completed

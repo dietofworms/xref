@@ -1,0 +1,8 @@
+consumer:
+  target: prod
+  outputs:
+    prod:
+      type: duckdb
+      path: ../warehouse.duckdb
+      schema: marts
+      threads: 1
