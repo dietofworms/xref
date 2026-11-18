@@ -13,8 +13,8 @@ from typing import Any
 
 import yaml
 
-from uey._typing import as_list, as_mapping
-from uey.errors import UeyError
+from xref._typing import as_list, as_mapping
+from xref.errors import XrefError
 
 _PACKAGES_KEY = re.compile(r"^packages:[ \t]*(#.*)?$")
 _EMPTY_PACKAGES = re.compile(r"^packages:[ \t]*\[[ \t]*\][ \t]*(#.*)?$")
@@ -76,7 +76,7 @@ def ensure_local_packages(project_dir: Path, local_paths: list[str]) -> tuple[Pa
 def remove_local_packages(project_dir: Path, local_paths: list[str]) -> list[str]:
     """Remove single-line `- local: <path>` entries. Returns the paths removed.
 
-    Raises before changing anything if an entry is written in a form uey cannot
+    Raises before changing anything if an entry is written in a form xref cannot
     remove safely, so the caller can stop before deleting the package folder.
     """
     path = packages_file(project_dir)
@@ -98,7 +98,7 @@ def remove_local_packages(project_dir: Path, local_paths: list[str]) -> list[str
 
     if present & _existing_local_paths(new_text, path):
         lines = "".join(f"  - local: {p}\n" for p in sorted(present))
-        raise UeyError(
+        raise XrefError(
             f"Could not remove stub packages from {path} automatically. Delete these entries:\n{lines}"
         )
     if "packages" in _load(new_text, path) and _load(new_text, path)["packages"] is None:
@@ -120,16 +120,16 @@ def _load(text: str, path: Path) -> dict[str, Any]:
     try:
         data = as_mapping(yaml.safe_load(text) or {})
     except yaml.YAMLError as exc:
-        raise UeyError(f"{path} is not valid YAML: {exc}") from None
+        raise XrefError(f"{path} is not valid YAML: {exc}") from None
     if data is None:
-        raise UeyError(f"{path} should be a YAML mapping.")
+        raise XrefError(f"{path} should be a YAML mapping.")
     return data
 
 
 def _existing_local_paths(text: str, path: Path) -> set[str]:
     packages = as_list(_load(text, path).get("packages") or [])
     if packages is None:
-        raise UeyError(f"`packages` in {path} should be a list.")
+        raise XrefError(f"`packages` in {path} should be a list.")
     entries = [as_mapping(p) for p in packages]
     return {_normalise(str(e["local"])) for e in entries if e is not None and "local" in e}
 
@@ -153,8 +153,8 @@ def _check_parses(text: str, path: Path, added: list[str]) -> None:
         raise _manual_edit_error(path, added)
 
 
-def _manual_edit_error(path: Path, paths: list[str]) -> UeyError:
+def _manual_edit_error(path: Path, paths: list[str]) -> XrefError:
     snippet = "".join(f"  - local: {p}\n" for p in paths)
-    return UeyError(
+    return XrefError(
         f"Could not add the stub packages to {path} automatically. Add these under `packages:`:\n{snippet}"
     )

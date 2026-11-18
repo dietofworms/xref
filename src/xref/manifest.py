@@ -1,4 +1,4 @@
-"""Read the parts of a dbt manifest.json that uey needs."""
+"""Read the parts of a dbt manifest.json that xref needs."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from uey._typing import as_mapping
-from uey.errors import UeyError
+from xref._typing import as_mapping
+from xref.errors import XrefError
 
 SUPPORTED_SCHEMA_VERSIONS = frozenset({"https://schemas.getdbt.com/dbt/manifest/v12.json"})
 
@@ -71,11 +71,11 @@ def load_manifest(path: Path) -> Manifest:
     try:
         raw = as_mapping(json.loads(path.read_text(encoding="utf-8")))
     except FileNotFoundError:
-        raise UeyError(f"No manifest at {path}. Run `dbt parse` or `dbt build` first.") from None
+        raise XrefError(f"No manifest at {path}. Run `dbt parse` or `dbt build` first.") from None
     except json.JSONDecodeError as exc:
-        raise UeyError(f"{path} is not valid JSON: {exc}") from None
+        raise XrefError(f"{path} is not valid JSON: {exc}") from None
     if raw is None:
-        raise UeyError(f"{path} is not a dbt manifest.")
+        raise XrefError(f"{path} is not a dbt manifest.")
     return parse_manifest(raw, source=str(path))
 
 
@@ -83,21 +83,21 @@ def parse_manifest(raw: dict[str, Any], source: str = "manifest") -> Manifest:
     try:
         metadata = Metadata.model_validate(raw.get("metadata"))
     except ValidationError as exc:
-        raise UeyError(f"{source} has no usable metadata block: {exc}") from None
+        raise XrefError(f"{source} has no usable metadata block: {exc}") from None
 
     if metadata.dbt_schema_version not in SUPPORTED_SCHEMA_VERSIONS:
         supported = ", ".join(sorted(SUPPORTED_SCHEMA_VERSIONS))
-        raise UeyError(
-            f"{source} uses manifest schema {metadata.dbt_schema_version}; uey supports {supported}."
+        raise XrefError(
+            f"{source} uses manifest schema {metadata.dbt_schema_version}; xref supports {supported}."
         )
 
     nodes = as_mapping(raw.get("nodes", {}))
     if nodes is None:
-        raise UeyError(f"{source} has no nodes.")
+        raise XrefError(f"{source} has no nodes.")
 
     project_name = metadata.project_name or _infer_project_name(nodes)
     if not PROJECT_NAME.match(project_name):
-        raise UeyError(f"{source}: project name {project_name!r} is not a valid dbt project name.")
+        raise XrefError(f"{source}: project name {project_name!r} is not a valid dbt project name.")
 
     models: list[ModelNode] = []
     for unique_id, value in nodes.items():
@@ -110,7 +110,7 @@ def parse_manifest(raw: dict[str, Any], source: str = "manifest") -> Manifest:
         try:
             models.append(ModelNode.model_validate(node))
         except ValidationError as exc:
-            raise UeyError(f"{source}: could not read {unique_id}: {exc}") from None
+            raise XrefError(f"{source}: could not read {unique_id}: {exc}") from None
 
     models.sort(key=lambda m: m.unique_id)
     return Manifest(metadata=metadata, project_name=project_name, models=models)
@@ -125,4 +125,4 @@ def _infer_project_name(nodes: dict[str, Any]) -> str:
     }
     if len(packages) == 1:
         return packages.pop()
-    raise UeyError("The manifest has no metadata.project_name and uey could not infer it.")
+    raise XrefError("The manifest has no metadata.project_name and xref could not infer it.")

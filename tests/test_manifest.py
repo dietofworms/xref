@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 
 from tests.conftest import manifest_dict, model_node, write_manifest
-from uey.errors import UeyError
-from uey.manifest import Column, load_manifest, parse_manifest
+from xref.errors import XrefError
+from xref.manifest import Column, load_manifest, parse_manifest
 
 
 def test_column_with_declared_type() -> None:
@@ -51,12 +51,12 @@ def test_rejects_unsupported_schema_version(tmp_path: Path) -> None:
         tmp_path / "manifest.json",
         manifest_dict(schema_version="https://schemas.getdbt.com/dbt/manifest/v20.json"),
     )
-    with pytest.raises(UeyError, match="v20"):
+    with pytest.raises(XrefError, match="v20"):
         load_manifest(path)
 
 
 def test_missing_manifest_says_what_to_run(tmp_path: Path) -> None:
-    with pytest.raises(UeyError, match="dbt parse"):
+    with pytest.raises(XrefError, match="dbt parse"):
         load_manifest(tmp_path / "manifest.json")
 
 

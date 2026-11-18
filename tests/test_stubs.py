@@ -7,9 +7,9 @@ from typing import Any
 import yaml
 
 from tests.conftest import manifest_dict, model_node
-from uey.manifest import load_manifest, parse_manifest
-from uey.published import PublishedManifest, from_manifest
-from uey.stubs import MODELS_YAML, render_stub_package
+from xref.manifest import load_manifest, parse_manifest
+from xref.published import PublishedManifest, from_manifest
+from xref.stubs import MODELS_YAML, render_stub_package
 
 NOW = datetime(2026, 11, 18, 12, 0, tzinfo=UTC)
 

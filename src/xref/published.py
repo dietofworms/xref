@@ -1,4 +1,4 @@
-"""The slim manifest that `uey publish` writes and `uey sync` reads.
+"""The slim manifest that `xref publish` writes and `xref sync` reads.
 
 It holds only what consumers need: the producer's public models, where they
 live in the warehouse, and their documentation. `format_version` changes
@@ -12,8 +12,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from uey.errors import UeyError
-from uey.manifest import PROJECT_NAME, Column, Manifest, ModelVersion
+from xref.errors import XrefError
+from xref.manifest import PROJECT_NAME, Column, Manifest, ModelVersion
 
 FORMAT_VERSION = 1
 
@@ -123,4 +123,4 @@ def parse_published(data: bytes, source: str) -> PublishedManifest:
     try:
         return PublishedManifest.model_validate_json(data)
     except ValueError as exc:
-        raise UeyError(f"{source} is not a manifest uey can read: {exc}") from None
+        raise XrefError(f"{source} is not a manifest xref can read: {exc}") from None

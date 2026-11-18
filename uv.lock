@@ -2778,68 +2778,6 @@ wheels = [
 ]
 
 [[package]]
-name = "uey"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "fsspec" },
-    { name = "pydantic" },
-    { name = "pyyaml" },
-    { name = "typer" },
-]
-
-[package.optional-dependencies]
-azure = [
-    { name = "adlfs" },
-]
-gcs = [
-    { name = "gcsfs" },
-]
-s3 = [
-    { name = "s3fs" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "boto3" },
-    { name = "boto3-stubs", extra = ["s3"] },
-    { name = "dbt-oss" },
-    { name = "duckdb" },
-    { name = "moto", extra = ["server"] },
-    { name = "pyright" },
-    { name = "pytest" },
-    { name = "ruff" },
-    { name = "s3fs" },
-    { name = "types-pyyaml" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "adlfs", marker = "extra == 'azure'", specifier = ">=2026.8.0" },
-    { name = "fsspec", specifier = ">=2024.6" },
-    { name = "gcsfs", marker = "extra == 'gcs'", specifier = ">=2026.10.1" },
-    { name = "pydantic", specifier = ">=2.14.3" },
-    { name = "pyyaml", specifier = ">=6" },
-    { name = "s3fs", marker = "extra == 's3'", specifier = ">=2026.9.0" },
-    { name = "typer", specifier = ">=0.29.1" },
-]
-provides-extras = ["s3", "gcs", "azure"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "boto3", specifier = ">=1.43.117" },
-    { name = "boto3-stubs", extras = ["s3"], specifier = ">=1.44.5" },
-    { name = "dbt-oss", specifier = "==2.0.11" },
-    { name = "duckdb", specifier = ">=2.0.0" },
-    { name = "moto", extras = ["server"], specifier = ">=5.2.5" },
-    { name = "pyright", specifier = ">=1.1.414" },
-    { name = "pytest", specifier = ">=9.2.0" },
-    { name = "ruff", specifier = ">=0.17.4" },
-    { name = "s3fs", specifier = ">=2026.9.0" },
-    { name = "types-pyyaml", specifier = ">=6.0.12.20261113" },
-]
-
-[[package]]
 name = "urllib3"
 version = "2.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2942,6 +2880,68 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/19/70/80f3b7c10d2630aa66414bf23d210386700aa390547278c789afa994fd7e/xmltodict-1.0.4.tar.gz", hash = "sha256:6d94c9f834dd9e44514162799d344d815a3a4faec913717a9ecbfa5be1bb8e61", size = 26124, upload-time = "2026-02-22T02:21:22.074Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/38/34/98a2f52245f4d47be93b580dae5f9861ef58977d73a79eb47c58f1ad1f3a/xmltodict-1.0.4-py3-none-any.whl", hash = "sha256:a4a00d300b0e1c59fc2bfccb53d7b2e88c32f200df138a0dd2229f842497026a", size = 13580, upload-time = "2026-02-22T02:21:21.039Z" },
+]
+
+[[package]]
+name = "xref"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "fsspec" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "typer" },
+]
+
+[package.optional-dependencies]
+azure = [
+    { name = "adlfs" },
+]
+gcs = [
+    { name = "gcsfs" },
+]
+s3 = [
+    { name = "s3fs" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "boto3" },
+    { name = "boto3-stubs", extra = ["s3"] },
+    { name = "dbt-oss" },
+    { name = "duckdb" },
+    { name = "moto", extra = ["server"] },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "ruff" },
+    { name = "s3fs" },
+    { name = "types-pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "adlfs", marker = "extra == 'azure'", specifier = ">=2026.8.0" },
+    { name = "fsspec", specifier = ">=2024.6" },
+    { name = "gcsfs", marker = "extra == 'gcs'", specifier = ">=2026.10.1" },
+    { name = "pydantic", specifier = ">=2.14.3" },
+    { name = "pyyaml", specifier = ">=6" },
+    { name = "s3fs", marker = "extra == 's3'", specifier = ">=2026.9.0" },
+    { name = "typer", specifier = ">=0.29.1" },
+]
+provides-extras = ["s3", "gcs", "azure"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "boto3", specifier = ">=1.43.117" },
+    { name = "boto3-stubs", extras = ["s3"], specifier = ">=1.44.5" },
+    { name = "dbt-oss", specifier = "==2.0.11" },
+    { name = "duckdb", specifier = ">=2.0.0" },
+    { name = "moto", extras = ["server"], specifier = ">=5.2.5" },
+    { name = "pyright", specifier = ">=1.1.414" },
+    { name = "pytest", specifier = ">=9.2.0" },
+    { name = "ruff", specifier = ">=0.17.4" },
+    { name = "s3fs", specifier = ">=2026.9.0" },
+    { name = "types-pyyaml", specifier = ">=6.0.12.20261113" },
 ]
 
 [[package]]
