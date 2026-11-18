@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/banner.svg" alt="uey: product_a publishes dim_customers, product_b refs it" width="100%"></p>
+
 # uey
 
 Cross-project `ref('project', 'model')` for dbt v2, without a dbt platform plan.
