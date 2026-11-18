@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/banner.svg" alt="uey: product_a publishes dim_customers, product_b refs it" width="100%"></p>
+<p align="center"><img src="docs/banner.png" alt="xref: product_a publishes dim_customers, product_b refs it" width="100%"></p>
 
 # uey
 
