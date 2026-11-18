@@ -110,6 +110,14 @@ def test_sync_removes_packages_dropped_from_config(tmp_path: Path) -> None:
     out = _run("sync", "--project-dir", str(consumer))
     assert "Removed stub package for finance" in out
     assert not (consumer / ".mesh" / "finance").exists()
+    packages = yaml.safe_load((consumer / "packages.yml").read_text())
+    assert packages == {"packages": [{"local": ".mesh/core"}]}
+
+    # Dropping the last project leaves a valid, empty list, and adding it back works.
+    (consumer / "uey.yml").write_text(f"store: {store}\nprojects: [finance]\n")
+    _run("sync", "--project-dir", str(consumer))
+    packages = yaml.safe_load((consumer / "packages.yml").read_text())
+    assert packages == {"packages": [{"local": ".mesh/finance"}]}
 
 
 def test_sync_will_not_overwrite_a_folder_it_did_not_create(tmp_path: Path) -> None:
@@ -137,3 +145,18 @@ def test_missing_store_is_explained(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     result = runner.invoke(app, ["publish", "--project-dir", str(_producer(tmp_path))])
     assert result.exit_code == 1
     assert "No store configured" in result.output
+
+
+def test_failed_fetch_leaves_existing_packages_untouched(tmp_path: Path) -> None:
+    store = tmp_path / "store"
+    _run("publish", "--project-dir", str(_producer(tmp_path, "core")), "--store", str(store))
+    consumer = _consumer(tmp_path, f"store: {store}\nprojects: [core]\n")
+    _run("sync", "--project-dir", str(consumer))
+    marker = consumer / ".mesh" / "core" / ".uey.json"
+    before = marker.read_text()
+
+    (consumer / "uey.yml").write_text(f"store: {store}\nprojects: [core, missing]\n")
+    result = runner.invoke(app, ["sync", "--project-dir", str(consumer)])
+    assert result.exit_code == 1
+    assert "No published manifest for missing" in result.output
+    assert marker.read_text() == before

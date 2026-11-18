@@ -134,6 +134,15 @@ environment variables, profile or instance role.
 - **`projects:` in `dependencies.yml` does nothing** without the dbt platform.
   uey uses a `local:` package entry instead.
 - Only dbt manifest schema v12 is supported (dbt v2 and recent dbt 1.x write it).
+- **Tested so far:** dbt v2.0.11 (`dbt-oss` and `dbt`) with DuckDB, and the S3
+  store against a local S3 server (moto). Stubs use the `relation_name` the
+  producer's own manifest records, so quoting follows the warehouse, but
+  Snowflake, BigQuery, Databricks and Redshift have not been run end to end.
+  GCS and Azure go through the same fsspec code as S3 and are untested.
+
+## License
+
+Apache 2.0. See [LICENSE](LICENSE).
 
 ## Development
 

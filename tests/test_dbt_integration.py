@@ -29,6 +29,7 @@ DBT_FLAGS = ["--no-version-check", "--no-send-anonymous-usage-stats", "--profile
 VERSIONED_YML = """
 models:
   - name: customer_tiers
+    description: "{% raw %}Tiers, with {{ braces }} kept literally{% endraw %}"
     latest_version: 2
     config:
       access: public
@@ -119,6 +120,8 @@ def test_publish_sync_build(tmp_path: Path) -> None:
         "model.producer.dim_customers",
         "model.producer.fct_orders",
     }
+    stub = manifest["nodes"]["model.producer.customer_tiers.v2"]
+    assert stub["description"] == "Tiers, with {{ braces }} kept literally"
     assert set(manifest["parent_map"]["model.consumer.tier_check"]) == {
         "model.producer.customer_tiers.v1",
         "model.producer.customer_tiers.v2",

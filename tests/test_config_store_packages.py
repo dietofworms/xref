@@ -7,7 +7,7 @@ import yaml
 
 from uey.config import Config, Upstream, load_config
 from uey.errors import UeyError
-from uey.packages import ensure_local_packages
+from uey.packages import ensure_local_packages, remove_local_packages
 from uey.store import FsspecStore, LocalStore, open_store
 
 # --- config ---------------------------------------------------------------
@@ -34,6 +34,13 @@ def test_unknown_config_keys_are_errors(tmp_path: Path) -> None:
 def test_invalid_project_name_is_rejected(tmp_path: Path) -> None:
     (tmp_path / "uey.yml").write_text("projects:\n  - ../etc\n")
     with pytest.raises(UeyError, match="valid dbt project name"):
+        load_config(tmp_path)
+
+
+@pytest.mark.parametrize("mesh_dir", ["../outside", "/abs/path", ""])
+def test_mesh_dir_must_stay_inside_project(tmp_path: Path, mesh_dir: str) -> None:
+    (tmp_path / "uey.yml").write_text(f"mesh_dir: '{mesh_dir}'\n")
+    with pytest.raises(UeyError, match="mesh_dir"):
         load_config(tmp_path)
 
 
@@ -140,3 +147,29 @@ def test_flow_style_list_falls_back_to_instructions(tmp_path: Path) -> None:
     (tmp_path / "packages.yml").write_text("packages: [{package: x/y, version: 1.0.0}]\n")
     with pytest.raises(UeyError, match=r"local: \.mesh/core"):
         ensure_local_packages(tmp_path, [".mesh/core"])
+
+
+def test_removes_only_the_named_entry(tmp_path: Path) -> None:
+    (tmp_path / "packages.yml").write_text(
+        "packages:\n  - package: x/y\n    version: 1.0.0\n  - local: .mesh/core  # uey\n"
+        "  - local: './.mesh/finance'\n"
+    )
+    assert remove_local_packages(tmp_path, [".mesh/finance"]) == [".mesh/finance"]
+    assert _locals(tmp_path / "packages.yml") == [".mesh/core"]
+    assert "# uey" in (tmp_path / "packages.yml").read_text()
+
+
+def test_removing_last_entry_leaves_empty_list(tmp_path: Path) -> None:
+    (tmp_path / "packages.yml").write_text("packages:\n  - local: .mesh/core\n")
+    remove_local_packages(tmp_path, [".mesh/core"])
+    assert yaml.safe_load((tmp_path / "packages.yml").read_text()) == {"packages": []}
+    ensure_local_packages(tmp_path, [".mesh/finance"])
+    assert _locals(tmp_path / "packages.yml") == [".mesh/finance"]
+
+
+def test_multiline_entry_is_not_removed_silently(tmp_path: Path) -> None:
+    original = "packages:\n  -\n    local: .mesh/core\n"
+    (tmp_path / "packages.yml").write_text(original)
+    with pytest.raises(UeyError, match="Delete these entries"):
+        remove_local_packages(tmp_path, [".mesh/core"])
+    assert (tmp_path / "packages.yml").read_text() == original

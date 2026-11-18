@@ -11,7 +11,7 @@ environments:                            # which upstream environments each
 
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import yaml
@@ -54,6 +54,14 @@ class Config(BaseModel):
         if items is None:
             return value
         return [{"name": v} if isinstance(v, str) else v for v in items]
+
+    @field_validator("mesh_dir")
+    @classmethod
+    def _mesh_dir_inside_project(cls, value: str) -> str:
+        path = PurePosixPath(value)
+        if path.is_absolute() or ".." in path.parts or not path.parts:
+            raise ValueError("mesh_dir must be a relative path inside the project, like .mesh")
+        return value
 
     def environments_for(self, upstream: Upstream, environment: str) -> list[str]:
         """The upstream environments to try, in order, when running in `environment`."""

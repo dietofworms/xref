@@ -65,7 +65,7 @@ def _yaml_entry(name: str, versions: list[PublishedModel]) -> dict[str, Any]:
 
     entry: dict[str, Any] = {"name": name}
     if doc_source.description:
-        entry["description"] = doc_source.description
+        entry["description"] = _jinja_safe(doc_source.description)
     if not unversioned and doc_source.latest_version is not None:
         entry["latest_version"] = doc_source.latest_version
     entry["config"] = {"access": "public"}
@@ -88,10 +88,18 @@ def _version_entry(model: PublishedModel) -> dict[str, Any]:
 def _column_entry(name: str, description: str, data_type: str | None) -> dict[str, Any]:
     entry: dict[str, Any] = {"name": name}
     if description:
-        entry["description"] = description
+        entry["description"] = _jinja_safe(description)
     if data_type:
         entry["data_type"] = data_type
     return entry
+
+
+def _jinja_safe(text: str) -> str:
+    """dbt renders descriptions as Jinja. The producer's are already rendered, so
+    any braces left in them are literal text and must not be evaluated again."""
+    if "{{" in text or "{%" in text or "{#" in text:
+        return "{% raw %}" + text.replace("{% endraw %}", "") + "{% endraw %}"
+    return text
 
 
 def _dump(data: dict[str, Any]) -> str:

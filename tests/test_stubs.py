@@ -97,3 +97,27 @@ def test_versioned_model_gets_one_file_per_version() -> None:
 def test_rendering_is_deterministic() -> None:
     raw = manifest_dict(model_node("b"), model_node("a"))
     assert render_stub_package(_publish(raw)) == render_stub_package(_publish(raw))
+
+
+def test_relation_names_pass_through_as_the_warehouse_quotes_them() -> None:
+    bigquery = model_node("orders")
+    bigquery["relation_name"] = "`my-gcp-project`.`analytics`.`orders`"
+    snowflake = model_node("customers")
+    snowflake["relation_name"] = 'ANALYTICS.CORE."Customers"'
+    files = render_stub_package(_publish(manifest_dict(bigquery, snowflake)))
+    assert files[PurePosixPath("models/orders.sql")].endswith(
+        "select * from `my-gcp-project`.`analytics`.`orders`\n"
+    )
+    assert files[PurePosixPath("models/customers.sql")].endswith(
+        'select * from ANALYTICS.CORE."Customers"\n'
+    )
+
+
+def test_braces_in_descriptions_are_not_evaluated() -> None:
+    node = model_node("orders")
+    node["description"] = "Use {{ var }} literally"
+    node["columns"]["id"]["description"] = "{% not jinja %}"
+    entry = yaml.safe_load(render_stub_package(_publish(manifest_dict(node)))[MODELS_YAML])
+    (model,) = entry["models"]
+    assert model["description"] == "{% raw %}Use {{ var }} literally{% endraw %}"
+    assert model["columns"][0]["description"] == "{% raw %}{% not jinja %}{% endraw %}"

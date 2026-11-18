@@ -15,7 +15,7 @@ from uey._typing import as_mapping
 from uey.config import Config
 from uey.errors import UeyError
 from uey.manifest import load_manifest
-from uey.packages import ensure_local_packages
+from uey.packages import ensure_local_packages, remove_local_packages
 from uey.published import PublishedManifest, from_manifest, parse_published
 from uey.store import ManifestStore, manifest_key
 from uey.stubs import render_stub_package
@@ -68,6 +68,8 @@ def sync(project_dir: Path, config: Config, store: ManifestStore, environment: s
     mesh_dir = project_dir / config.mesh_dir
     synced: list[SyncedProject] = []
 
+    # Fetch every upstream before writing anything, so one missing manifest
+    # does not leave some packages updated and others stale.
     for upstream in config.projects:
         if upstream.name == own_name:
             raise UeyError(
@@ -80,11 +82,14 @@ def sync(project_dir: Path, config: Config, store: ManifestStore, environment: s
             raise UeyError(
                 f"{source} holds project {published.project_name!r}, expected {upstream.name!r}."
             )
-        package_dir = mesh_dir / upstream.name
-        _write_package(package_dir, published, source)
-        synced.append(SyncedProject(published=published, source=source, package_dir=package_dir))
+        synced.append(
+            SyncedProject(published=published, source=source, package_dir=mesh_dir / upstream.name)
+        )
 
-    removed = _remove_stale(mesh_dir, {u.name for u in config.projects})
+    for project in synced:
+        _write_package(project.package_dir, project.published, project.source)
+
+    removed = _remove_stale(project_dir, mesh_dir, {u.name for u in config.projects})
     rel_paths = [p.package_dir.relative_to(project_dir).as_posix() for p in synced]
     packages_path, added = ensure_local_packages(project_dir, rel_paths)
     return SyncResult(
@@ -142,15 +147,20 @@ def _write_package(package_dir: Path, published: PublishedManifest, source: str)
         raise
 
 
-def _remove_stale(mesh_dir: Path, keep: set[str]) -> list[str]:
-    removed: list[str] = []
+def _remove_stale(project_dir: Path, mesh_dir: Path, keep: set[str]) -> list[str]:
+    """Delete stub packages for projects no longer in uey.yml, and their packages entries."""
     if not mesh_dir.exists():
-        return removed
-    for child in sorted(mesh_dir.iterdir()):
-        if child.is_dir() and child.name not in keep and (child / MARKER_FILE).exists():
-            shutil.rmtree(child)
-            removed.append(child.name)
-    return removed
+        return []
+    stale = [
+        child
+        for child in sorted(mesh_dir.iterdir())
+        if child.is_dir() and child.name not in keep and (child / MARKER_FILE).exists()
+    ]
+    # Remove the packages entries first: if that fails, the folders stay and dbt deps still works.
+    remove_local_packages(project_dir, [c.relative_to(project_dir).as_posix() for c in stale])
+    for child in stale:
+        shutil.rmtree(child)
+    return [c.name for c in stale]
 
 
 def _own_project_name(project_dir: Path) -> str | None:

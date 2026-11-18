@@ -43,13 +43,23 @@ class LocalStore:
         return path
 
     def read(self, key: str) -> bytes | None:
+        path = self._path(key)
         try:
-            return self._path(key).read_bytes()
+            return path.read_bytes()
         except FileNotFoundError:
             return None
+        except OSError as exc:
+            raise UeyError(f"Could not read {path}: {exc}") from exc
 
     def write(self, key: str, data: bytes) -> None:
         path = self._path(key)
+        try:
+            self._write(path, data)
+        except OSError as exc:
+            raise UeyError(f"Could not write {path}: {exc}") from exc
+
+    @staticmethod
+    def _write(path: Path, data: bytes) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         # Write then rename, so a reader never sees a half-written file.
         fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".uey-", suffix=".tmp")
@@ -93,17 +103,27 @@ class FsspecStore:
             raise UeyError(f"Store key {key!r} escapes the store root.")
         return f"{self._protocol}://{self._root}/{key}"
 
+    # Cloud SDKs raise their own exception types (botocore's NoCredentialsError,
+    # for example), so anything other than "not found" becomes a UeyError here.
+
     def read(self, key: str) -> bytes | None:
+        url = self._url(key)
         try:
-            data: bytes = self._fs.cat_file(self._url(key))
+            data: bytes = self._fs.cat_file(url)
             return data
         except FileNotFoundError:
             return None
+        except Exception as exc:
+            raise UeyError(f"Could not read {url}: {exc}") from exc
 
     def write(self, key: str, data: bytes) -> None:
         # Object stores have no directories, so no makedirs: writing needs only
         # put permission (s3:PutObject), and a missing bucket is never created.
-        self._fs.pipe_file(self._url(key), data)
+        url = self._url(key)
+        try:
+            self._fs.pipe_file(url, data)
+        except Exception as exc:
+            raise UeyError(f"Could not write {url}: {exc}") from exc
 
     def describe(self, key: str) -> str:
         return self._url(key)

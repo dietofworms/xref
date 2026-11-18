@@ -17,6 +17,8 @@ from uey._typing import as_list, as_mapping
 from uey.errors import UeyError
 
 _PACKAGES_KEY = re.compile(r"^packages:[ \t]*(#.*)?$")
+_EMPTY_PACKAGES = re.compile(r"^packages:[ \t]*\[[ \t]*\][ \t]*(#.*)?$")
+_LOCAL_ITEM = re.compile(r"""^[ \t]*-[ \t]*local:[ \t]*['"]?([^'"#]*?)['"]?[ \t]*(#.*)?$""")
 _LIST_ITEM = re.compile(r"^([ \t]*)-[ \t]")
 
 
@@ -42,7 +44,12 @@ def ensure_local_packages(project_dir: Path, local_paths: list[str]) -> tuple[Pa
         return path, []
 
     new_lines = [f"local: {p}" for p in missing]
-    lines = text.splitlines(keepends=True)
+    # `packages: []` (as left by remove_local_packages) becomes a block list we can extend.
+    lines = [
+        "packages:\n" if _EMPTY_PACKAGES.match(line.rstrip("\r\n")) else line
+        for line in text.splitlines(keepends=True)
+    ]
+    text = "".join(lines)
     key_index = next(
         (i for i, line in enumerate(lines) if _PACKAGES_KEY.match(line.rstrip("\r\n"))),
         None,
@@ -64,6 +71,44 @@ def ensure_local_packages(project_dir: Path, local_paths: list[str]) -> tuple[Pa
     _check_parses(text, path, missing)
     path.write_text(text, encoding="utf-8")
     return path, missing
+
+
+def remove_local_packages(project_dir: Path, local_paths: list[str]) -> list[str]:
+    """Remove single-line `- local: <path>` entries. Returns the paths removed.
+
+    Raises before changing anything if an entry is written in a form uey cannot
+    remove safely, so the caller can stop before deleting the package folder.
+    """
+    path = packages_file(project_dir)
+    if not path.exists():
+        return []
+    text = path.read_text(encoding="utf-8")
+    targets = {_normalise(p) for p in local_paths}
+    present = targets & _existing_local_paths(text, path)
+    if not present:
+        return []
+
+    kept: list[str] = []
+    for line in text.splitlines(keepends=True):
+        match = _LOCAL_ITEM.match(line.rstrip("\r\n"))
+        if match and _normalise(match.group(1)) in present:
+            continue
+        kept.append(line)
+    new_text = "".join(kept)
+
+    if present & _existing_local_paths(new_text, path):
+        lines = "".join(f"  - local: {p}\n" for p in sorted(present))
+        raise UeyError(
+            f"Could not remove stub packages from {path} automatically. Delete these entries:\n{lines}"
+        )
+    if "packages" in _load(new_text, path) and _load(new_text, path)["packages"] is None:
+        # An empty `packages:` key parses as null, which dbt rejects.
+        new_text = "".join(
+            "packages: []\n" if _PACKAGES_KEY.match(line.rstrip("\r\n")) else line
+            for line in new_text.splitlines(keepends=True)
+        )
+    path.write_text(new_text, encoding="utf-8")
+    return sorted(present)
 
 
 def _has_packages_key(path: Path) -> bool:
