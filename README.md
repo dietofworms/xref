@@ -19,10 +19,10 @@ is rebuilt. Tested on dbt v2.0.11, both `dbt-oss` and the proprietary `dbt`.
 
 ## Install
 
-xref is not on PyPI yet. Install from GitHub, with the extra for your store:
+Install from PyPI, with the extra for your store:
 
 ```
-pip install "xref[s3] @ git+https://github.com/dietofworms/xref"
+pip install "xref[s3]"
 ```
 
 Extras: `s3` (S3 and S3-compatible), `gcs` (Google Cloud Storage), `azure`
