@@ -96,7 +96,7 @@ glow_map = {(c, r): sample(glow, c, r) for r in title_rows for c in range(COLS)}
 # glitch: some rows slip sideways, a red and a cyan copy sit either side of
 # the letters, and a few noise bars cut across.
 CYAN, MAGENTA = (0, 229, 255), (255, 46, 136)
-shift = {4: 3, 5: 3, 9: -4, 12: 2}
+shift = {4: 2, 5: 2, 9: -2, 12: 1}
 glitch_rng = random.Random(11)
 
 
@@ -111,18 +111,18 @@ for r in title_rows:
         tx = (c - x0) / (x1 - x0)
         ty = (r - y0) / (y1 - y0)
         if cov > 0.04:
-            shade = cov * (1.05 - 0.35 * ty) + 0.25 * (thresh(c, r) - 0.5)
+            shade = cov * (1.15 - 0.3 * ty) + 0.25 * (thresh(c, r) - 0.5)
             i = max(1, min(len(RAMP) - 1, round(shade * (len(RAMP) - 1))))
             col = lerp(ORANGE, VIOLET, tx)
             col = lerp(lerp(BG, col, 0.55), col, shade + 0.25)
-            if r in shift and glitch_rng.random() < 0.08:
+            if r in shift and glitch_rng.random() < 0.03:
                 put(c, r, glitch_rng.choice("░▒"), lerp(col, (255, 255, 255), 0.35))
             else:
                 put(c, r, RAMP[i], col, bold=True)
-        elif (k := cov_at(c + 2, r)) > 0.3:
-            put(c, r, RAMP[max(1, round(k * 7))], lerp(BG, CYAN, 0.9), bold=True)
-        elif (k := cov_at(c - 2, r)) > 0.3:
-            put(c, r, RAMP[max(1, round(k * 7))], lerp(BG, MAGENTA, 0.9), bold=True)
+        elif (k := cov_at(c + 2, r)) > 0.5 and cov_at(c - 2, r) < 0.04:
+            put(c, r, RAMP[max(1, round(k * 4))], lerp(BG, CYAN, 0.6))
+        elif (k := cov_at(c - 2, r)) > 0.5 and cov_at(c + 2, r) < 0.04:
+            put(c, r, RAMP[max(1, round(k * 4))], lerp(BG, MAGENTA, 0.6))
         elif g > 0.05 and g * 0.9 > thresh(c, r):
             put(c, r, "." if g < 0.2 else ":", lerp(BG, lerp(ORANGE, VIOLET, tx), 0.45))
 
