@@ -81,11 +81,33 @@ glow = mask.filter(ImageFilter.GaussianBlur(26))
 title_rows = range(0, 15)
 y0, y1 = top / CH, (top + th) / CH
 x0, x1 = (W - tw) / 2 / CW, (W + tw) / 2 / CW
+
+
+def sample(img: Image.Image, c: int, r: int) -> float:
+    if not 0 <= c < COLS:
+        return 0.0
+    cell = (round(c * CW), r * CH, round((c + 1) * CW), (r + 1) * CH)
+    return ImageStat.Stat(img.crop(cell)).mean[0] / 255
+
+
+cov_map = {(c, r): sample(mask, c, r) for r in title_rows for c in range(COLS)}
+glow_map = {(c, r): sample(glow, c, r) for r in title_rows for c in range(COLS)}
+
+# glitch: some rows slip sideways, a red and a cyan copy sit either side of
+# the letters, and a few noise bars cut across.
+CYAN, MAGENTA = (0, 229, 255), (255, 46, 136)
+shift = {4: 3, 5: 3, 9: -4, 12: 2}
+glitch_rng = random.Random(11)
+
+
+def cov_at(c: int, r: int) -> float:
+    return cov_map.get((c - shift.get(r, 0), r), 0.0)
+
+
 for r in title_rows:
     for c in range(COLS):
-        cell = (round(c * CW), r * CH, round((c + 1) * CW), (r + 1) * CH)
-        cov = ImageStat.Stat(mask.crop(cell)).mean[0] / 255
-        g = ImageStat.Stat(glow.crop(cell)).mean[0] / 255
+        cov = cov_at(c, r)
+        g = glow_map.get((c - shift.get(r, 0), r), 0.0)
         tx = (c - x0) / (x1 - x0)
         ty = (r - y0) / (y1 - y0)
         if cov > 0.04:
@@ -93,9 +115,28 @@ for r in title_rows:
             i = max(1, min(len(RAMP) - 1, round(shade * (len(RAMP) - 1))))
             col = lerp(ORANGE, VIOLET, tx)
             col = lerp(lerp(BG, col, 0.55), col, shade + 0.25)
-            put(c, r, RAMP[i], col, bold=True)
+            if r in shift and glitch_rng.random() < 0.08:
+                put(c, r, glitch_rng.choice("░▒"), lerp(col, (255, 255, 255), 0.35))
+            else:
+                put(c, r, RAMP[i], col, bold=True)
+        elif (k := cov_at(c + 2, r)) > 0.3:
+            put(c, r, RAMP[max(1, round(k * 7))], lerp(BG, CYAN, 0.9), bold=True)
+        elif (k := cov_at(c - 2, r)) > 0.3:
+            put(c, r, RAMP[max(1, round(k * 7))], lerp(BG, MAGENTA, 0.9), bold=True)
         elif g > 0.05 and g * 0.9 > thresh(c, r):
             put(c, r, "." if g < 0.2 else ":", lerp(BG, lerp(ORANGE, VIOLET, tx), 0.45))
+
+for r, c, n, col in [
+    (4, 36, 12, CYAN),
+    (9, 117, 16, MAGENTA),
+    (12, 40, 8, MAGENTA),
+    (2, 92, 6, CYAN),
+]:
+    for i in range(n):
+        if glitch_rng.random() < 0.75:
+            put(
+                c + i, r, glitch_rng.choice("░░▒▓"), lerp(BG, col, 0.35 + 0.4 * glitch_rng.random())
+            )
 
 centre(15, "cross-project ref() for dbt v2 · no platform plan required", MUTED)
 
