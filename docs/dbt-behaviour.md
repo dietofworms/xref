@@ -1,4 +1,4 @@
-# Phase 0 findings
+# dbt v2 behaviour xref relies on
 
 dbt-oss 2.0.11 (Apache 2.0) with DuckDB, run on 2026-11-12. On the proprietary
 `dbt` 2.0.11, with no license installed, experiments 1 to 4, 8, the no-op part of
@@ -7,8 +7,7 @@ except where experiment 6 notes a difference. Not repeated there: the data test 
 stub (5) and the wrong-type stub contract (6). Both distributions write a
 `dim_customers` node with the same set of fields.
 
-**Decision: go.** The stub-package design works on dbt v2 with no hook into the
-engine. Two parts of the handoff were wrong; see "Changes to the plan".
+The stub-package design works on dbt v2 with no hook into the engine.
 
 | # | Experiment | Result | Evidence |
 |---|---|---|---|
@@ -34,17 +33,15 @@ engine. Two parts of the handoff were wrong; see "Changes to the plan".
     `UnresolvedIdentifier (dbt0227): No column c.email found. Available are c.email_address, ...`.
     It listed `email_address`, which is only in the warehouse, not the stub YAML, so it read the live table schema.
 
-## Changes to the plan
+## Design consequences
 
-1. **Manifest version.** dbt v2 writes v12, the same schema as dbt Core 1.x. Phase 1 needs one
-   reader, not separate v12 and v20 readers. Keep the check on `dbt_schema_version` so an
-   unknown version fails loudly.
+1. **Manifest version.** dbt v2 writes v12, the same schema as dbt Core 1.x, so xref has one
+   reader. It checks `dbt_schema_version` so an unknown version fails loudly.
 2. **Stubs must not carry data tests.** They would rerun the producer's tests in every consumer build.
-3. **Contracts in stubs are documentation.** Drift detection is `uey`'s job (the Phase 2
-   breaking-change gate). On dbt-oss nothing catches drift before the warehouse does.
-4. **Ephemeral stays the default** (answers the comment in the handoff). It works, creates nothing,
+3. **Contracts in stubs are documentation.** Drift detection is xref's job. On dbt-oss nothing catches drift before the warehouse does.
+4. **Ephemeral is the default.** It works, creates nothing,
    and the CTE is a plain `select *`.
-5. **`projects:` is not needed** and does nothing without the platform. `sync` should write a
+5. **`projects:` is not needed** and does nothing without the platform. `sync` writes a
    `packages.yml` `local:` entry.
 6. **Versioned models** need one stub file per version, named `<model>_v<N>.sql`, plus
    `versions`, `latest_version` and `deprecation_date` in the YAML. dbt then handles

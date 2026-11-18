@@ -1,4 +1,0 @@
-packages:
-- local: .mesh/producer
-  name: producer
-sha1_hash: 3b2221828754fc875de8e011434dff21f940c039

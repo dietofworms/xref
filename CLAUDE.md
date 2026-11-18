@@ -1,6 +1,6 @@
 # xref
 
-Cross-project refs for dbt v2. See README.md for usage and spike/FINDINGS.md
+Cross-project refs for dbt v2. See README.md for usage and docs/dbt-behaviour.md
 for the dbt behaviour the design relies on.
 
 ## Commits
