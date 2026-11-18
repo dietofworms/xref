@@ -1,6 +1,6 @@
-"""uey.yml: per-project settings, read from the dbt project directory.
+"""xref.yml: per-project settings, read from the dbt project directory.
 
-store: s3://analytics-artifacts/uey      # where manifests are published
+store: s3://analytics-artifacts/xref      # where manifests are published
 projects:                                # upstream projects this one refs
   - core_platform
   - name: finance
@@ -17,11 +17,11 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 
-from uey._typing import as_list
-from uey.errors import UeyError
-from uey.manifest import PROJECT_NAME
+from xref._typing import as_list
+from xref.errors import XrefError
+from xref.manifest import PROJECT_NAME
 
-CONFIG_FILE = "uey.yml"
+CONFIG_FILE = "xref.yml"
 DEFAULT_ENVIRONMENT = "prod"
 
 
@@ -45,7 +45,7 @@ class Config(BaseModel):
     store: str | None = None
     projects: list[Upstream] = []
     environments: dict[str, list[str]] = {}
-    mesh_dir: str = ".mesh"
+    mesh_dir: str = ".xref"
 
     @field_validator("projects", mode="before")
     @classmethod
@@ -60,7 +60,7 @@ class Config(BaseModel):
     def _mesh_dir_inside_project(cls, value: str) -> str:
         path = PurePosixPath(value)
         if path.is_absolute() or ".." in path.parts or not path.parts:
-            raise ValueError("mesh_dir must be a relative path inside the project, like .mesh")
+            raise ValueError("mesh_dir must be a relative path inside the project, like .xref")
         return value
 
     def environments_for(self, upstream: Upstream, environment: str) -> list[str]:
@@ -81,8 +81,8 @@ def load_config(project_dir: Path) -> Config:
     try:
         raw: Any = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except yaml.YAMLError as exc:
-        raise UeyError(f"{path} is not valid YAML: {exc}") from None
+        raise XrefError(f"{path} is not valid YAML: {exc}") from None
     try:
         return Config.model_validate(raw)
     except ValidationError as exc:
-        raise UeyError(f"{path} is not a valid uey config:\n{exc}") from None
+        raise XrefError(f"{path} is not a valid xref config:\n{exc}") from None

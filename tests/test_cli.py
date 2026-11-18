@@ -9,7 +9,7 @@ import yaml
 from typer.testing import CliRunner
 
 from tests.conftest import manifest_dict, model_node, write_manifest
-from uey.cli import app
+from xref.cli import app
 
 runner = CliRunner()
 
@@ -28,7 +28,7 @@ def _consumer(tmp_path: Path, config: str) -> Path:
     project = tmp_path / "consumer"
     project.mkdir()
     (project / "dbt_project.yml").write_text("name: consumer\n")
-    (project / "uey.yml").write_text(config)
+    (project / "xref.yml").write_text(config)
     return project
 
 
@@ -53,10 +53,10 @@ def test_publish_then_sync(tmp_path: Path) -> None:
     assert "Synced core (prod" in out
     assert "run `dbt deps` next" in out
 
-    sql = (consumer / ".mesh" / "core" / "models" / "orders.sql").read_text()
+    sql = (consumer / ".xref" / "core" / "models" / "orders.sql").read_text()
     assert 'select * from "warehouse"."analytics"."orders"' in sql
     packages = yaml.safe_load((consumer / "packages.yml").read_text())
-    assert packages == {"packages": [{"local": ".mesh/core"}]}
+    assert packages == {"packages": [{"local": ".xref/core"}]}
 
     # A second sync changes nothing in packages.yml and does not ask for deps again.
     out = _run("sync", "--project-dir", str(consumer))
@@ -69,14 +69,14 @@ def test_dev_falls_back_to_prod_then_prefers_dev(tmp_path: Path) -> None:
     consumer = _consumer(tmp_path, f"store: {store}\nprojects: [core]\n")
 
     _run("sync", "--project-dir", str(consumer), "--env", "dev")
-    marker = yaml.safe_load((consumer / ".mesh" / "core" / ".uey.json").read_text())
+    marker = yaml.safe_load((consumer / ".xref" / "core" / ".xref.json").read_text())
     assert marker["environment"] == "prod"
 
     shutil.rmtree(tmp_path / "core")
     dev_producer = _producer(tmp_path, relation_schema="dbt_dev")
     _run("publish", "--project-dir", str(dev_producer), "--store", str(store), "--env", "dev")
     _run("sync", "--project-dir", str(consumer), "--env", "dev")
-    sql = (consumer / ".mesh" / "core" / "models" / "orders.sql").read_text()
+    sql = (consumer / ".xref" / "core" / "models" / "orders.sql").read_text()
     assert '"dbt_dev"' in sql
 
 
@@ -84,8 +84,8 @@ def test_store_and_env_from_environment_variables(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     store = tmp_path / "store"
-    monkeypatch.setenv("UEY_STORE", str(store))
-    monkeypatch.setenv("UEY_ENV", "staging")
+    monkeypatch.setenv("XREF_STORE", str(store))
+    monkeypatch.setenv("XREF_ENV", "staging")
     _run("publish", "--project-dir", str(_producer(tmp_path)))
     assert (store / "core" / "staging" / "manifest.json").exists()
 
@@ -106,31 +106,31 @@ def test_sync_removes_packages_dropped_from_config(tmp_path: Path) -> None:
     consumer = _consumer(tmp_path, f"store: {store}\nprojects: [core, finance]\n")
     _run("sync", "--project-dir", str(consumer))
 
-    (consumer / "uey.yml").write_text(f"store: {store}\nprojects: [core]\n")
+    (consumer / "xref.yml").write_text(f"store: {store}\nprojects: [core]\n")
     out = _run("sync", "--project-dir", str(consumer))
     assert "Removed stub package for finance" in out
-    assert not (consumer / ".mesh" / "finance").exists()
+    assert not (consumer / ".xref" / "finance").exists()
     packages = yaml.safe_load((consumer / "packages.yml").read_text())
-    assert packages == {"packages": [{"local": ".mesh/core"}]}
+    assert packages == {"packages": [{"local": ".xref/core"}]}
 
     # Dropping the last project leaves a valid, empty list, and adding it back works.
-    (consumer / "uey.yml").write_text(f"store: {store}\nprojects: [finance]\n")
+    (consumer / "xref.yml").write_text(f"store: {store}\nprojects: [finance]\n")
     _run("sync", "--project-dir", str(consumer))
     packages = yaml.safe_load((consumer / "packages.yml").read_text())
-    assert packages == {"packages": [{"local": ".mesh/finance"}]}
+    assert packages == {"packages": [{"local": ".xref/finance"}]}
 
 
 def test_sync_will_not_overwrite_a_folder_it_did_not_create(tmp_path: Path) -> None:
     store = tmp_path / "store"
     _run("publish", "--project-dir", str(_producer(tmp_path)), "--store", str(store))
     consumer = _consumer(tmp_path, f"store: {store}\nprojects: [core]\n")
-    (consumer / ".mesh" / "core").mkdir(parents=True)
-    (consumer / ".mesh" / "core" / "mine.sql").write_text("select 1")
+    (consumer / ".xref" / "core").mkdir(parents=True)
+    (consumer / ".xref" / "core" / "mine.sql").write_text("select 1")
 
     result = runner.invoke(app, ["sync", "--project-dir", str(consumer)])
     assert result.exit_code == 1
-    assert "not created by uey" in result.output
-    assert (consumer / ".mesh" / "core" / "mine.sql").exists()
+    assert "not created by xref" in result.output
+    assert (consumer / ".xref" / "core" / "mine.sql").exists()
 
 
 def test_project_cannot_be_its_own_upstream(tmp_path: Path) -> None:
@@ -141,7 +141,7 @@ def test_project_cannot_be_its_own_upstream(tmp_path: Path) -> None:
 
 
 def test_missing_store_is_explained(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("UEY_STORE", raising=False)
+    monkeypatch.delenv("XREF_STORE", raising=False)
     result = runner.invoke(app, ["publish", "--project-dir", str(_producer(tmp_path))])
     assert result.exit_code == 1
     assert "No store configured" in result.output
@@ -152,10 +152,10 @@ def test_failed_fetch_leaves_existing_packages_untouched(tmp_path: Path) -> None
     _run("publish", "--project-dir", str(_producer(tmp_path, "core")), "--store", str(store))
     consumer = _consumer(tmp_path, f"store: {store}\nprojects: [core]\n")
     _run("sync", "--project-dir", str(consumer))
-    marker = consumer / ".mesh" / "core" / ".uey.json"
+    marker = consumer / ".xref" / "core" / ".xref.json"
     before = marker.read_text()
 
-    (consumer / "uey.yml").write_text(f"store: {store}\nprojects: [core, missing]\n")
+    (consumer / "xref.yml").write_text(f"store: {store}\nprojects: [core, missing]\n")
     result = runner.invoke(app, ["sync", "--project-dir", str(consumer)])
     assert result.exit_code == 1
     assert "No published manifest for missing" in result.output

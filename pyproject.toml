@@ -1,5 +1,5 @@
 [project]
-name = "uey"
+name = "xref"
 version = "0.1.0"
 description = "Cross-project refs for dbt v2 without the dbt platform."
 readme = "README.md"
@@ -32,7 +32,7 @@ requires = ["uv-build>0.11,<0.12"]
 build-backend = "uv_build"
 
 [project.scripts]
-uey = "uey.cli:app"
+xref = "xref.cli:app"
 
 [project.optional-dependencies]
 s3 = [
