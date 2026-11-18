@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/banner.png" alt="xref: product_a publishes dim_customers, product_b refs it" width="100%"></p>
+
 # xref
 
 Cross-project `ref('project', 'model')` for dbt v2, without a dbt platform plan.
