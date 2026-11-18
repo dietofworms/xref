@@ -3,7 +3,7 @@
 Keys look like `<project>/<environment>/manifest.json` under the store's root.
 A store URL without a scheme (or with `file://`) is a local directory; any
 other scheme goes through fsspec, so `s3://`, `gs://` and `az://` work once the
-matching extra (`uey[s3]`, `uey[gcs]`, `uey[azure]`) is installed.
+matching extra (`xref[s3]`, `xref[gcs]`, `xref[azure]`) is installed.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Protocol
 
-from uey.errors import UeyError
+from xref.errors import XrefError
 
 
 class ManifestStore(Protocol):
@@ -39,7 +39,7 @@ class LocalStore:
     def _path(self, key: str) -> Path:
         path = (self.root / key).resolve()
         if not path.is_relative_to(self.root.resolve()):
-            raise UeyError(f"Store key {key!r} escapes the store root.")
+            raise XrefError(f"Store key {key!r} escapes the store root.")
         return path
 
     def read(self, key: str) -> bytes | None:
@@ -49,20 +49,20 @@ class LocalStore:
         except FileNotFoundError:
             return None
         except OSError as exc:
-            raise UeyError(f"Could not read {path}: {exc}") from exc
+            raise XrefError(f"Could not read {path}: {exc}") from exc
 
     def write(self, key: str, data: bytes) -> None:
         path = self._path(key)
         try:
             self._write(path, data)
         except OSError as exc:
-            raise UeyError(f"Could not write {path}: {exc}") from exc
+            raise XrefError(f"Could not write {path}: {exc}") from exc
 
     @staticmethod
     def _write(path: Path, data: bytes) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         # Write then rename, so a reader never sees a half-written file.
-        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".uey-", suffix=".tmp")
+        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".xref-", suffix=".tmp")
         try:
             with os.fdopen(fd, "wb") as f:
                 f.write(data)
@@ -80,7 +80,7 @@ class FsspecStore:
         try:
             import fsspec  # pyright: ignore[reportMissingTypeStubs]
         except ImportError:  # pragma: no cover - fsspec is a core dependency
-            raise UeyError("fsspec is not installed.") from None
+            raise XrefError("fsspec is not installed.") from None
         protocol, _, rest = url.partition("://")
         try:
             self._fs: Any = fsspec.filesystem(protocol)  # pyright: ignore[reportUnknownMemberType]
@@ -93,18 +93,18 @@ class FsspecStore:
                 "az": "azure",
                 "abfs": "azure",
             }.get(protocol)
-            hint = f" Install it with `pip install 'uey[{extra}]'`." if extra else ""
-            raise UeyError(f"Cannot open store {url}: {exc}.{hint}") from None
+            hint = f" Install it with `pip install 'xref[{extra}]'`." if extra else ""
+            raise XrefError(f"Cannot open store {url}: {exc}.{hint}") from None
         self._protocol = protocol
         self._root = rest.rstrip("/")
 
     def _url(self, key: str) -> str:
         if ".." in key.split("/"):
-            raise UeyError(f"Store key {key!r} escapes the store root.")
+            raise XrefError(f"Store key {key!r} escapes the store root.")
         return f"{self._protocol}://{self._root}/{key}"
 
     # Cloud SDKs raise their own exception types (botocore's NoCredentialsError,
-    # for example), so anything other than "not found" becomes a UeyError here.
+    # for example), so anything other than "not found" becomes a XrefError here.
 
     def read(self, key: str) -> bytes | None:
         url = self._url(key)
@@ -114,7 +114,7 @@ class FsspecStore:
         except FileNotFoundError:
             return None
         except Exception as exc:
-            raise UeyError(f"Could not read {url}: {exc}") from exc
+            raise XrefError(f"Could not read {url}: {exc}") from exc
 
     def write(self, key: str, data: bytes) -> None:
         # Object stores have no directories, so no makedirs: writing needs only
@@ -123,7 +123,7 @@ class FsspecStore:
         try:
             self._fs.pipe_file(url, data)
         except Exception as exc:
-            raise UeyError(f"Could not write {url}: {exc}") from exc
+            raise XrefError(f"Could not write {url}: {exc}") from exc
 
     def describe(self, key: str) -> str:
         return self._url(key)

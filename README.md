@@ -1,13 +1,13 @@
-# uey
+# xref
 
 Cross-project `ref('project', 'model')` for dbt v2, without a dbt platform plan.
 
 A producer project publishes a slim copy of its manifest after each run. A
-consumer project syncs it before `dbt deps`, and uey writes a local dbt package
+consumer project syncs it before `dbt deps`, and xref writes a local dbt package
 with one ephemeral stub per public model:
 
 ```sql
--- .mesh/core_platform/models/dim_customers.sql (generated)
+-- .xref/core_platform/models/dim_customers.sql (generated)
 {{ config(materialized='ephemeral') }}
 select * from "analytics"."core"."dim_customers"
 ```
@@ -19,10 +19,10 @@ is rebuilt. Tested on dbt v2.0.11, both `dbt-oss` and the proprietary `dbt`.
 
 ## Install
 
-uey is not on PyPI yet. Install from GitHub, with the extra for your store:
+xref is not on PyPI yet. Install from GitHub, with the extra for your store:
 
 ```
-pip install "uey[s3] @ git+https://github.com/dietofworms/uey"
+pip install "xref[s3] @ git+https://github.com/dietofworms/xref"
 ```
 
 Extras: `s3` (S3 and S3-compatible), `gcs` (Google Cloud Storage), `azure`
@@ -43,11 +43,11 @@ Extras: `s3` (S3 and S3-compatible), `gcs` (Google Cloud Storage), `azure`
 
    ```
    dbt build
-   uey publish --env prod --store s3://my-bucket/uey
+   xref publish --env prod --store s3://my-bucket/xref
    ```
 
    This reads `target/manifest.json` and writes
-   `s3://my-bucket/uey/<project>/prod/manifest.json`. Only public models are
+   `s3://my-bucket/xref/<project>/prod/manifest.json`. Only public models are
    published: their warehouse relation, description, columns and versions. SQL
    and private models stay in the producer.
 
@@ -56,25 +56,25 @@ job with `--env staging`.
 
 ## Consumer: sync before deps
 
-1. Add `uey.yml` next to `dbt_project.yml`:
+1. Add `xref.yml` next to `dbt_project.yml`:
 
    ```yaml
-   store: s3://my-bucket/uey
+   store: s3://my-bucket/xref
    projects:
      - core_platform
    ```
 
-2. Add `.mesh/` to `.gitignore`.
+2. Add `.xref/` to `.gitignore`.
 
 3. Run sync before dbt, locally and in the job:
 
    ```
-   uey sync --env prod
+   xref sync --env prod
    dbt deps
    dbt build
    ```
 
-   The first sync adds `- local: .mesh/core_platform` to `packages.yml` (or to
+   The first sync adds `- local: .xref/core_platform` to `packages.yml` (or to
    `dependencies.yml` if that is where your packages are), keeping your comments.
 
 4. Reference upstream models:
@@ -88,14 +88,14 @@ The consumer's warehouse credentials need read access to the producer's tables.
 
 ## Environments
 
-`--env` (or `$UEY_ENV`, default `prod`) names the environment you are running
+`--env` (or `$XREF_ENV`, default `prod`) names the environment you are running
 in. By default `prod` reads the producer's `prod` manifest, and any other
-environment reads its own name first, then falls back to `prod`. So `uey sync
+environment reads its own name first, then falls back to `prod`. So `xref sync
 --env dev` uses the producer's `dev` manifest if one is published, otherwise
 production. Override per environment or pin a project:
 
 ```yaml
-store: s3://my-bucket/uey
+store: s3://my-bucket/xref
 projects:
   - core_platform
   - name: finance
@@ -109,11 +109,11 @@ environments:
 
 | Setting | Where | Default |
 |---|---|---|
-| Store URL | `--store`, `$UEY_STORE`, `store:` in `uey.yml` (first wins) | none, required |
-| Environment | `--env`, `$UEY_ENV` | `prod` |
-| Upstream projects | `projects:` in `uey.yml` | none |
-| Environment routing | `environments:` in `uey.yml` | see above |
-| Stub package folder | `mesh_dir:` in `uey.yml` | `.mesh` |
+| Store URL | `--store`, `$XREF_STORE`, `store:` in `xref.yml` (first wins) | none, required |
+| Environment | `--env`, `$XREF_ENV` | `prod` |
+| Upstream projects | `projects:` in `xref.yml` | none |
+| Environment routing | `environments:` in `xref.yml` | see above |
+| Stub package folder | `mesh_dir:` in `xref.yml` | `.xref` |
 | Manifest path (publish) | `--manifest` | `target/manifest.json` |
 
 A store is a URL (`s3://`, `gs://`, `az://`, or any fsspec URL) or a directory
@@ -132,7 +132,7 @@ environment variables, profile or instance role.
 - **Data tests stay with the producer.** Stubs carry no tests, so producer
   tests do not rerun in every consumer.
 - **`projects:` in `dependencies.yml` does nothing** without the dbt platform.
-  uey uses a `local:` package entry instead.
+  xref uses a `local:` package entry instead.
 - Only dbt manifest schema v12 is supported (dbt v2 and recent dbt 1.x write it).
 - **Tested so far:** dbt v2.0.11 (`dbt-oss` and `dbt`) with DuckDB, and the S3
   store against a local S3 server (moto). Stubs use the `relation_name` the
@@ -150,9 +150,13 @@ Apache 2.0. See [LICENSE](LICENSE).
 uv sync
 uv run pytest -m "not dbt"   # unit tests
 uv run pytest -m dbt         # end to end against dbt and DuckDB
-UEY_DBT="uvx --from dbt==2.0.11 dbt" uv run pytest -m dbt   # proprietary dbt
+XREF_DBT="uvx --from dbt==2.0.11 dbt" uv run pytest -m dbt   # proprietary dbt
 uv run ruff check . && uv run pyright
 ```
 
 `spike/` holds the Phase 0 experiments that proved the design; see
 [spike/FINDINGS.md](spike/FINDINGS.md).
+
+To release, set `version` in `pyproject.toml`, merge to `master`, then push a
+matching tag (`v0.1.0` for version `0.1.0`). The Publish workflow uploads to
+PyPI through trusted publishing, in the `pypi` GitHub environment.

@@ -1,6 +1,6 @@
 """End to end against real dbt and DuckDB: build producer, publish, sync, build consumer.
 
-Uses `dbt` from the environment, or the command in $UEY_DBT (for example
+Uses `dbt` from the environment, or the command in $XREF_DBT (for example
 `uvx --from dbt==2.0.11 dbt` to test the proprietary distribution).
 Run with `pytest -m dbt`; skipped when no dbt is available.
 """
@@ -19,7 +19,7 @@ import duckdb
 import pytest
 from typer.testing import CliRunner
 
-from uey.cli import app
+from xref.cli import app
 
 pytestmark = pytest.mark.dbt
 
@@ -44,7 +44,7 @@ models:
 
 
 def _dbt_command() -> list[str]:
-    if configured := os.environ.get("UEY_DBT"):
+    if configured := os.environ.get("XREF_DBT"):
         return shlex.split(configured)
     found = shutil.which("dbt") or shutil.which("dbt", path=str(Path(sys.executable).parent))
     if found is None:
@@ -70,7 +70,7 @@ def _copy_project(name: str, dest: Path) -> Path:
         SPIKE / name,
         project,
         ignore=shutil.ignore_patterns(
-            ".mesh",
+            ".xref",
             "target",
             "dbt_packages",
             "logs",
@@ -102,7 +102,7 @@ def test_publish_sync_build(tmp_path: Path) -> None:
     assert published.exit_code == 0, published.output
 
     consumer = _copy_project("consumer", tmp_path)
-    (consumer / "uey.yml").write_text(f"store: {store}\nprojects: [producer]\n")
+    (consumer / "xref.yml").write_text(f"store: {store}\nprojects: [producer]\n")
     (consumer / "models" / "tier_check.sql").write_text(
         "select v1.customer_id, v1.tier as old_tier, v2.tier as new_tier\n"
         "from {{ ref('producer', 'customer_tiers', v=1) }} as v1\n"

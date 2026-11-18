@@ -5,10 +5,10 @@ from pathlib import Path
 import pytest
 import yaml
 
-from uey.config import Config, Upstream, load_config
-from uey.errors import UeyError
-from uey.packages import ensure_local_packages, remove_local_packages
-from uey.store import FsspecStore, LocalStore, open_store
+from xref.config import Config, Upstream, load_config
+from xref.errors import XrefError
+from xref.packages import ensure_local_packages, remove_local_packages
+from xref.store import FsspecStore, LocalStore, open_store
 
 # --- config ---------------------------------------------------------------
 
@@ -18,7 +18,7 @@ def test_missing_config_is_empty(tmp_path: Path) -> None:
 
 
 def test_projects_accept_plain_names(tmp_path: Path) -> None:
-    (tmp_path / "uey.yml").write_text(
+    (tmp_path / "xref.yml").write_text(
         "store: ./store\nprojects:\n  - core\n  - name: finance\n    environment: prod\n"
     )
     config = load_config(tmp_path)
@@ -26,21 +26,21 @@ def test_projects_accept_plain_names(tmp_path: Path) -> None:
 
 
 def test_unknown_config_keys_are_errors(tmp_path: Path) -> None:
-    (tmp_path / "uey.yml").write_text("stor: typo\n")
-    with pytest.raises(UeyError, match="stor"):
+    (tmp_path / "xref.yml").write_text("stor: typo\n")
+    with pytest.raises(XrefError, match="stor"):
         load_config(tmp_path)
 
 
 def test_invalid_project_name_is_rejected(tmp_path: Path) -> None:
-    (tmp_path / "uey.yml").write_text("projects:\n  - ../etc\n")
-    with pytest.raises(UeyError, match="valid dbt project name"):
+    (tmp_path / "xref.yml").write_text("projects:\n  - ../etc\n")
+    with pytest.raises(XrefError, match="valid dbt project name"):
         load_config(tmp_path)
 
 
 @pytest.mark.parametrize("mesh_dir", ["../outside", "/abs/path", ""])
 def test_mesh_dir_must_stay_inside_project(tmp_path: Path, mesh_dir: str) -> None:
-    (tmp_path / "uey.yml").write_text(f"mesh_dir: '{mesh_dir}'\n")
-    with pytest.raises(UeyError, match="mesh_dir"):
+    (tmp_path / "xref.yml").write_text(f"mesh_dir: '{mesh_dir}'\n")
+    with pytest.raises(XrefError, match="mesh_dir"):
         load_config(tmp_path)
 
 
@@ -71,17 +71,17 @@ def test_local_store_round_trip(tmp_path: Path) -> None:
 
 
 def test_local_store_refuses_escaping_keys(tmp_path: Path) -> None:
-    with pytest.raises(UeyError, match="escapes"):
+    with pytest.raises(XrefError, match="escapes"):
         LocalStore(tmp_path / "store").write("../outside", b"x")
 
 
 def test_fsspec_store_round_trip() -> None:
-    store = open_store("memory://uey-test-bucket/prefix")
+    store = open_store("memory://xref-test-bucket/prefix")
     assert isinstance(store, FsspecStore)
     assert store.read("core/prod/manifest.json") is None
     store.write("core/prod/manifest.json", b"{}")
     assert store.read("core/prod/manifest.json") == b"{}"
-    assert store.describe("k") == "memory://uey-test-bucket/prefix/k"
+    assert store.describe("k") == "memory://xref-test-bucket/prefix/k"
 
 
 def test_relative_local_store_resolves_against_project(tmp_path: Path) -> None:
@@ -91,7 +91,7 @@ def test_relative_local_store_resolves_against_project(tmp_path: Path) -> None:
 
 
 def test_unknown_scheme_gives_clear_error() -> None:
-    with pytest.raises(UeyError, match="Cannot open store"):
+    with pytest.raises(XrefError, match="Cannot open store"):
         open_store("nosuchscheme://bucket")
 
 
@@ -103,73 +103,73 @@ def _locals(path: Path) -> list[str]:
 
 
 def test_creates_packages_yml(tmp_path: Path) -> None:
-    path, added = ensure_local_packages(tmp_path, [".mesh/core"])
+    path, added = ensure_local_packages(tmp_path, [".xref/core"])
     assert path.name == "packages.yml"
-    assert added == [".mesh/core"]
-    assert _locals(path) == [".mesh/core"]
+    assert added == [".xref/core"]
+    assert _locals(path) == [".xref/core"]
 
 
 def test_inserts_into_existing_list_keeping_comments(tmp_path: Path) -> None:
     (tmp_path / "packages.yml").write_text(
         "# our packages\npackages:\n    - package: dbt-labs/dbt_utils  # keep\n      version: 1.3.0\n"
     )
-    path, _ = ensure_local_packages(tmp_path, [".mesh/core"])
+    path, _ = ensure_local_packages(tmp_path, [".xref/core"])
     text = path.read_text()
     assert "# our packages" in text
     assert "# keep" in text
-    assert "    - local: .mesh/core\n" in text
-    assert _locals(path) == [".mesh/core"]
+    assert "    - local: .xref/core\n" in text
+    assert _locals(path) == [".xref/core"]
 
 
 def test_existing_entry_is_left_alone(tmp_path: Path) -> None:
-    original = "packages:\n  - local: ./.mesh/core/\n"
+    original = "packages:\n  - local: ./.xref/core/\n"
     (tmp_path / "packages.yml").write_text(original)
-    _, added = ensure_local_packages(tmp_path, [".mesh/core"])
+    _, added = ensure_local_packages(tmp_path, [".xref/core"])
     assert added == []
     assert (tmp_path / "packages.yml").read_text() == original
 
 
 def test_prefers_dependencies_yml_with_packages(tmp_path: Path) -> None:
     (tmp_path / "dependencies.yml").write_text("packages:\n  - package: x/y\n    version: 1.0.0\n")
-    path, _ = ensure_local_packages(tmp_path, [".mesh/core"])
+    path, _ = ensure_local_packages(tmp_path, [".xref/core"])
     assert path.name == "dependencies.yml"
     assert not (tmp_path / "packages.yml").exists()
 
 
 def test_adds_packages_key_to_dependencies_yml(tmp_path: Path) -> None:
     (tmp_path / "dependencies.yml").write_text("projects:\n  - name: other\n")
-    path, _ = ensure_local_packages(tmp_path, [".mesh/core"])
+    path, _ = ensure_local_packages(tmp_path, [".xref/core"])
     assert path.name == "dependencies.yml"
-    assert _locals(path) == [".mesh/core"]
+    assert _locals(path) == [".xref/core"]
 
 
 def test_flow_style_list_falls_back_to_instructions(tmp_path: Path) -> None:
     (tmp_path / "packages.yml").write_text("packages: [{package: x/y, version: 1.0.0}]\n")
-    with pytest.raises(UeyError, match=r"local: \.mesh/core"):
-        ensure_local_packages(tmp_path, [".mesh/core"])
+    with pytest.raises(XrefError, match=r"local: \.xref/core"):
+        ensure_local_packages(tmp_path, [".xref/core"])
 
 
 def test_removes_only_the_named_entry(tmp_path: Path) -> None:
     (tmp_path / "packages.yml").write_text(
-        "packages:\n  - package: x/y\n    version: 1.0.0\n  - local: .mesh/core  # uey\n"
-        "  - local: './.mesh/finance'\n"
+        "packages:\n  - package: x/y\n    version: 1.0.0\n  - local: .xref/core  # xref\n"
+        "  - local: './.xref/finance'\n"
     )
-    assert remove_local_packages(tmp_path, [".mesh/finance"]) == [".mesh/finance"]
-    assert _locals(tmp_path / "packages.yml") == [".mesh/core"]
-    assert "# uey" in (tmp_path / "packages.yml").read_text()
+    assert remove_local_packages(tmp_path, [".xref/finance"]) == [".xref/finance"]
+    assert _locals(tmp_path / "packages.yml") == [".xref/core"]
+    assert "# xref" in (tmp_path / "packages.yml").read_text()
 
 
 def test_removing_last_entry_leaves_empty_list(tmp_path: Path) -> None:
-    (tmp_path / "packages.yml").write_text("packages:\n  - local: .mesh/core\n")
-    remove_local_packages(tmp_path, [".mesh/core"])
+    (tmp_path / "packages.yml").write_text("packages:\n  - local: .xref/core\n")
+    remove_local_packages(tmp_path, [".xref/core"])
     assert yaml.safe_load((tmp_path / "packages.yml").read_text()) == {"packages": []}
-    ensure_local_packages(tmp_path, [".mesh/finance"])
-    assert _locals(tmp_path / "packages.yml") == [".mesh/finance"]
+    ensure_local_packages(tmp_path, [".xref/finance"])
+    assert _locals(tmp_path / "packages.yml") == [".xref/finance"]
 
 
 def test_multiline_entry_is_not_removed_silently(tmp_path: Path) -> None:
-    original = "packages:\n  -\n    local: .mesh/core\n"
+    original = "packages:\n  -\n    local: .xref/core\n"
     (tmp_path / "packages.yml").write_text(original)
-    with pytest.raises(UeyError, match="Delete these entries"):
-        remove_local_packages(tmp_path, [".mesh/core"])
+    with pytest.raises(XrefError, match="Delete these entries"):
+        remove_local_packages(tmp_path, [".xref/core"])
     assert (tmp_path / "packages.yml").read_text() == original

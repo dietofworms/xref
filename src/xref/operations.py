@@ -11,16 +11,16 @@ from typing import Any
 
 import yaml
 
-from uey._typing import as_mapping
-from uey.config import Config
-from uey.errors import UeyError
-from uey.manifest import load_manifest
-from uey.packages import ensure_local_packages, remove_local_packages
-from uey.published import PublishedManifest, from_manifest, parse_published
-from uey.store import ManifestStore, manifest_key
-from uey.stubs import render_stub_package
+from xref._typing import as_mapping
+from xref.config import Config
+from xref.errors import XrefError
+from xref.manifest import load_manifest
+from xref.packages import ensure_local_packages, remove_local_packages
+from xref.published import PublishedManifest, from_manifest, parse_published
+from xref.store import ManifestStore, manifest_key
+from xref.stubs import render_stub_package
 
-MARKER_FILE = ".uey.json"
+MARKER_FILE = ".xref.json"
 
 
 @dataclass
@@ -60,8 +60,8 @@ class SyncResult:
 
 def sync(project_dir: Path, config: Config, store: ManifestStore, environment: str) -> SyncResult:
     if not config.projects:
-        raise UeyError(
-            f"No upstream projects listed under `projects:` in {project_dir / 'uey.yml'}."
+        raise XrefError(
+            f"No upstream projects listed under `projects:` in {project_dir / 'xref.yml'}."
         )
 
     own_name = _own_project_name(project_dir)
@@ -72,14 +72,14 @@ def sync(project_dir: Path, config: Config, store: ManifestStore, environment: s
     # does not leave some packages updated and others stale.
     for upstream in config.projects:
         if upstream.name == own_name:
-            raise UeyError(
+            raise XrefError(
                 f"{upstream.name} is this project's own name; it cannot be its own upstream."
             )
         published, source = _fetch(
             store, upstream.name, config.environments_for(upstream, environment)
         )
         if published.project_name != upstream.name:
-            raise UeyError(
+            raise XrefError(
                 f"{source} holds project {published.project_name!r}, expected {upstream.name!r}."
             )
         synced.append(
@@ -111,16 +111,18 @@ def _fetch(
         if data is not None:
             return parse_published(data, location), location
         tried.append(location)
-    raise UeyError(
+    raise XrefError(
         f"No published manifest for {project}. Tried:\n"
         + "\n".join(f"  {t}" for t in tried)
-        + f"\nHas {project} run `uey publish`?"
+        + f"\nHas {project} run `xref publish`?"
     )
 
 
 def _write_package(package_dir: Path, published: PublishedManifest, source: str) -> None:
     if package_dir.exists() and not (package_dir / MARKER_FILE).exists():
-        raise UeyError(f"{package_dir} exists and was not created by uey; move it before syncing.")
+        raise XrefError(
+            f"{package_dir} exists and was not created by xref; move it before syncing."
+        )
     package_dir.parent.mkdir(parents=True, exist_ok=True)
     # Build the new package beside the old one, then swap, so a failed sync
     # never leaves a half-written package behind.
@@ -148,7 +150,7 @@ def _write_package(package_dir: Path, published: PublishedManifest, source: str)
 
 
 def _remove_stale(project_dir: Path, mesh_dir: Path, keep: set[str]) -> list[str]:
-    """Delete stub packages for projects no longer in uey.yml, and their packages entries."""
+    """Delete stub packages for projects no longer in xref.yml, and their packages entries."""
     if not mesh_dir.exists():
         return []
     stale = [
@@ -166,13 +168,13 @@ def _remove_stale(project_dir: Path, mesh_dir: Path, keep: set[str]) -> list[str
 def _own_project_name(project_dir: Path) -> str | None:
     path = project_dir / "dbt_project.yml"
     if not path.exists():
-        raise UeyError(
-            f"No dbt_project.yml in {project_dir}. Run uey from the dbt project directory or pass --project-dir."
+        raise XrefError(
+            f"No dbt_project.yml in {project_dir}. Run xref from the dbt project directory or pass --project-dir."
         )
     try:
         data = as_mapping(yaml.safe_load(path.read_text(encoding="utf-8")) or {})
     except yaml.YAMLError as exc:
-        raise UeyError(f"{path} is not valid YAML: {exc}") from None
+        raise XrefError(f"{path} is not valid YAML: {exc}") from None
     name = data.get("name") if data is not None else None
     return name if isinstance(name, str) else None
 
